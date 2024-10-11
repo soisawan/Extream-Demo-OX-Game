@@ -5,12 +5,12 @@
         <v-card class="mx-auto elevation-3" outlined style="border-radius: 30px; padding: 30px;" width="500">
           <v-card-title class="text-h5" style="font-size: 30px; font-weight: bold;"><h2>Welcome To Tic Tac Toe</h2></v-card-title>
           <v-card-text>
-            <v-avatar v-if="user" class="mx-auto mb-3" size="120">
-              <v-img alt="User Avatar" :src="user?.picture" />
+            <v-avatar v-if="userStore.isLogin" class="mx-auto mb-3" size="120">
+              <v-img alt="User Avatar" :src="userStore.image" />
             </v-avatar>
-            <h3 v-if="user" class="mb-2" style="font-size: 24px; font-weight: bold;">{{ user?.name }}</h3>
+            <h3 v-if="userStore.isLogin" class="mb-2" style="font-size: 24px; font-weight: bold;">{{ userStore.name }}</h3>
             <v-card
-              v-if="user"
+              v-if="userStore.isLogin"
               class="mx-auto mb-4 elevation-2"
               max-width="300px"
               outlined
@@ -25,7 +25,7 @@
                 class="font-weight-bold"
                 style="font-size: 26px; font-weight: bold; color:white ; text-shadow: 2px 20px 10px rgba(0, 0, 0, 0.5);"
               >
-                {{ score }}
+                {{ userStore.score }}
               </v-card-subtitle>
             </v-card>
             <div v-else class="welcome-card">
@@ -36,16 +36,38 @@
               >
             </div>
 
-            <v-btn
-              v-if="!user"
-              class="rounded-pill rainbow rainbow-2"
-              elevation="2"
-              style="font-size: 20px; width: 200px; height: 50px;"
-              @click="login"
-            >
-              Login
-            </v-btn>
+            <v-form v-if="!userStore.isLogin" ref="form" v-model="valid" lazy-validation>
+              <v-text-field
+                v-model="loginData.username"
+                density="compact"
+                label="Username"
+                required
+                :rules="[rules.required]"
+                style="border-radius: 20px;"
+                variant="outlined"
+              />
+              <v-text-field
+                v-model="loginData.password"
+                :append-inner-icon="visible ? 'mdi-eye-off' : 'mdi-eye'"
+                density="compact"
+                label="Password"
+                required
+                :rules="[rules.required]"
+                :type="visible ? 'text' : 'password'"
+                variant="outlined"
+                @click:append-inner="visible = !visible"
+              />
+              <v-btn
 
+                class="rounded-pill rainbow rainbow-2"
+                elevation="2"
+                style="font-size: 20px; width: 200px; height: 50px;"
+                @click="submitLogin"
+              >
+                Login
+              </v-btn>
+            <!-- @click="login" -->
+            </v-form>
             <v-btn
               v-else
               class="rounded-pill rainbow rainbow-1"
@@ -70,42 +92,73 @@
 
   const auth0 = useAuth0()
   const userStore = useUserStore()
-  const score = ref('กำลังโหลด...')
-  const hover = ref(false)
 
-  const fetchProfile = async (userId: string) => {
+  const hover = ref(false)
+  let token = ''
+  const user = {
+    name: '',
+    image: '',
+    score: '',
+  }
+
+  const valid = ref(false)
+  const form = ref()
+  const visible = ref(false)
+
+  const loginData = reactive({
+    username: '',
+    password: '',
+  })
+
+  const rules = {
+    required: (value: string) => !!value || 'This field is required',
+  }
+
+  const submitLogin = async () => {
+    if (form.value?.validate()) {
+      try {
+        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/auth/login`, {
+          username: loginData.username,
+          password: loginData.password,
+        })
+
+        if (response.status === 200) {
+          localStorage.setItem('token', response.data.token)
+          token = response.data.token
+          await fetchProfile()
+        }
+      } catch (error) {
+        console.error('Login failed:', error)
+      }
+    }
+  }
+
+  const fetchProfile = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_APP_API_URL}/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_APP_API_TOKEN}`,
-        },
-      })
-      return response.data
+      const token = localStorage.getItem('token') // ดึง token จาก localStorage
+      const response = await axios.post(
+        `${import.meta.env.VITE_APP_API_URL}/api/auth/get_profile`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (response.status === 200) {
+        console.log(response.data.result)
+
+        userStore.name = response.data.result.name
+        userStore.image = response.data.result.image
+        userStore.score = response.data.result.score
+        userStore.isLogin = true
+      }
     } catch (error) {
       console.error('Error fetching profile:', error)
     }
   }
 
-  const login = async () => {
-    await auth0.loginWithRedirect()
-  }
-
-  const user = computed(() => {
-    return auth0.user.value
-  })
-
-  watch(user, async (data, oldVal) => {
-    if (data) {
-      const userId = data.sub
-      const profile = await fetchProfile(userId!)
-      if (profile.user_metadata) {
-        score.value = profile.user_metadata.score
-        userStore.score = profile.user_metadata.score
-      } else {
-        score.value = '0'
-      }
-    }
-  })
 </script>
 
 <style scoped>

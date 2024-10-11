@@ -81,21 +81,17 @@
 </template>
 
 <script lang="ts" setup>
-  import { onMounted, ref } from 'vue'
+  import { ref } from 'vue'
   import Notiflix from 'notiflix'
-  import { useAuth0 } from '@auth0/auth0-vue'
-  import router from '@/router'
   import botImage from '../assets/img/bot.png'
   import playerImage from '../assets/img/player.png'
-  import axios from 'axios'
+  import { instanceAxios } from '../service/axios'
   import { useUserStore } from '@/stores/user'
+  import router from '@/router'
 
-  const auth0 = useAuth0()
-  const username = auth0.user.value?.name
-  const pic = auth0.user.value?.picture
-  const isAuthenticated = auth0.isAuthenticated
-  const userId = auth0.user.value?.sub
   const userStore = useUserStore()
+  const username = userStore.name
+  const pic = userStore.image
   let isFinish = false
 
   const board = ref(['', '', '', '', '', '', '', '', ''])
@@ -116,7 +112,6 @@
       totalScore += 1
       status.value = 'YOU WIN!!'
       if (consecutiveWins.value === 3) {
-        // Award bonus point after 3 consecutive wins
         status.value = 'YOU WIN 3 CONSECUTIVE!!'
         playerScore.value += 1
         totalScore += 1
@@ -261,19 +256,15 @@
 
   const updateUserScoreInAuth0 = async (newScore: number) => {
     try {
-      const tokenResponse = import.meta.env.VITE_APP_API_TOKEN
-      const accessToken = tokenResponse
-
-      await axios.patch(
-        `https://dev-4q1tggqlrj05l3o1.us.auth0.com/api/v2/users/${userId}`,
+      const token = localStorage.getItem('token')
+      await instanceAxios.post(
+        `${import.meta.env.VITE_APP_API_URL}/api/user/update_score`,
         {
-          user_metadata: {
-            score: newScore,
-          },
+          score: newScore,
         },
         {
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       )
@@ -306,22 +297,19 @@
   }
 
   const logout = () => {
-    auth0.logout({
-      logoutParams: {
-        returnTo: window.location.origin,
-      },
-    })
+    localStorage.removeItem('token')
     Notiflix.Notify.success('ออกจากระบบเรียบร้อยแล้ว', {
       position: 'right-bottom',
     })
     window.location.href = '/'
   }
-
   onMounted(() => {
-    if (!isAuthenticated.value) {
+    const isLogin = !!localStorage.getItem('token')
+    if (!isLogin) {
       router.push('/')
     }
   })
+
 </script>
 
 <style scoped>

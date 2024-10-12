@@ -19,10 +19,10 @@
       <v-spacer />
       <div class="profile-container d-flex align-center">
         <div class="profile-content">
-          <v-avatar v-if="username" class="mr-2 ml-2" size="35">
+          <v-avatar v-if="name" class="mr-2 ml-2" size="35">
             <v-img alt="User Avatar" :src="pic" />
           </v-avatar>
-          <span v-if="username">{{ username }}</span>
+          <span v-if="name">{{ name }}</span>
         </div>
 
         <v-menu offset-y>
@@ -90,7 +90,7 @@
   import router from '@/router'
 
   const userStore = useUserStore()
-  const username = userStore.name
+  const name = userStore.name
   const pic = userStore.image
   let isFinish = false
 
@@ -273,10 +273,7 @@
         position: 'right-bottom',
       })
     } catch (error) {
-      console.error('Error updating score:', error)
-      Notiflix.Notify.failure('ไม่สามารถบันทึกคะแนนได้', {
-        position: 'right-bottom',
-      })
+      console.log(error)
     }
   }
 

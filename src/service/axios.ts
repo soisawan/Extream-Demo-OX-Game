@@ -1,6 +1,7 @@
 import router from '@/router'
 import { useUserStore } from '@/stores/user'
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
+import Notiflix from 'notiflix'
 const userStore = useUserStore()
 
 export const instanceAxios = axios.create({
@@ -22,10 +23,11 @@ instanceAxios.interceptors.request.use(
         const now = Date.now() / 1000
 
         if (exp < now) {
-          console.log('Token expired')
           localStorage.removeItem('token')
-          console.log('หมดเวลา')
           userStore.isLogin = false
+          Notiflix.Notify.failure('Token หมดอายุ กรุณา Login ใหม่', {
+            position: 'right-bottom',
+          })
           router.push('/')
         }
       } catch (error) {
